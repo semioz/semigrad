@@ -29,12 +29,29 @@ func NewNeuron(nin int) *Neuron {
 	}
 }
 
+func (n *Neuron) NeuronParams() []*Value {
+	params := make([]*Value, len(n.weights)+1)
+	for i, w := range n.weights {
+		params[i] = w
+	}
+	params[len(n.weights)] = n.bias
+	return params
+}
+
 func NewLayer(nin, nout int) *Layer {
 	neurons := make([]*Neuron, nout)
 	for i := 0; i < nout; i++ {
 		neurons[i] = NewNeuron(nin)
 	}
 	return &Layer{neurons: neurons}
+}
+
+func (l *Layer) LayerParams() []*Value {
+	params := make([]*Value, 0)
+	for _, n := range l.neurons {
+		params = append(params, n.NeuronParams()...)
+	}
+	return params
 }
 
 func NewMLP(nin int, nouts []int) *MLP {
@@ -44,4 +61,12 @@ func NewMLP(nin int, nouts []int) *MLP {
 		layers[i] = *NewLayer(sz[i], sz[i+1])
 	}
 	return &MLP{layers: layers}
+}
+
+func (m *MLP) MLPParams() []*Value {
+	params := make([]*Value, 0)
+	for _, l := range m.layers {
+		params = append(params, l.LayerParams()...)
+	}
+	return params
 }
