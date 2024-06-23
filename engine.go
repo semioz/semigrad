@@ -27,10 +27,11 @@ func (v *Value) ResetGrad() {
 
 func NewValue(data float64, children []*Value, op string) *Value {
 	return &Value{
-		data:  data,
-		grad:  0,
-		_prev: children,
-		_op:   op,
+		data:      data,
+		grad:      0,
+		_prev:     children,
+		_op:       op,
+		_backward: func() {},
 	}
 }
 
