@@ -129,7 +129,48 @@ func (v *Value) Tanh() *Value {
 	return out
 }
 
+// rectified linear unit. activation function f(x) = max(0, x), returns 0 for negative inputs and the input itself for positive values.
+func (v *Value) Relu() *Value {
+	out := NewValue(math.Max(0, v.data), []*Value{v}, "relu")
+	out._backward = func() {
+		if v.data > 0 {
+			v.grad += out.grad
+		}
+	}
+	return out
+}
+
+// f(x) = 1 / (1 + e^(-x)) activation function
+// outputs values between 0 and 1, often used in the output layer for binary classification
+func (v *Value) Sigmoid() *Value {
+	sig := 1 / (1 + math.Exp(-(v.data)))
+	out := NewValue(sig, []*Value{v}, "sigmoid")
+	out._backward = func() {
+		v.grad += sig * (1 - sig) * out.grad
+	}
+	return out
+}
+
 func (v *Value) Backward() {
-	// Topological order all of the children in the graph
-	// implement later
+	//store our topological ordering
+	var topo []*Value
+	visited := make(map[*Value]bool)
+
+	var buildTopo func(*Value)
+	buildTopo = func(v *Value) {
+		if !visited[v] {
+			visited[v] = true
+			for _, child := range v._prev {
+				buildTopo(child)
+			}
+			topo = append(topo, v)
+		}
+	}
+	buildTopo(v)
+
+	// Go one variable at a time and apply the chain rule to get its gradient
+	v.grad = 1
+	for i := len(topo) - 1; i >= 0; i-- {
+		topo[i]._backward()
+	}
 }
