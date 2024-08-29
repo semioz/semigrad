@@ -8,9 +8,9 @@ import (
 // Backward function is used update the gradients of the childs - Chain rule
 type Value struct {
 	data, grad float64
-	_prev      []*Value
-	_op        string
-	_backward  func()
+	prev       []*Value
+	op         string
+	backward   func()
 }
 
 func (v Value) GetValue() float64 {
@@ -27,11 +27,11 @@ func (v *Value) ResetGrad() {
 
 func NewValue(data float64, children []*Value, op string) *Value {
 	return &Value{
-		data:      data,
-		grad:      0,
-		_prev:     children,
-		_op:       op,
-		_backward: func() {},
+		data:     data,
+		grad:     0,
+		prev:     children,
+		op:       op,
+		backward: func() {},
 	}
 }
 
@@ -45,7 +45,7 @@ func (v *Value) Add(other interface{}) *Value {
 	}
 
 	out := NewValue(v.data+otherVal.data, []*Value{v, otherVal}, "+")
-	v._backward = func() {
+	out.backward = func() {
 		v.grad += out.grad
 		otherVal.grad += out.grad
 	}
@@ -62,7 +62,7 @@ func (v *Value) Sub(other interface{}) *Value {
 	}
 
 	out := NewValue(v.data-otherVal.data, []*Value{v, otherVal}, "-")
-	v._backward = func() {
+	out.backward = func() {
 		v.grad += out.grad
 		otherVal.grad -= out.grad
 	}
@@ -79,7 +79,7 @@ func (v *Value) Mul(other interface{}) *Value {
 	}
 
 	out := NewValue(v.data*otherVal.data, []*Value{v, otherVal}, "*")
-	v._backward = func() {
+	out.backward = func() {
 		v.grad += otherVal.data * out.grad
 		otherVal.grad += v.data * out.grad
 	}
@@ -88,7 +88,7 @@ func (v *Value) Mul(other interface{}) *Value {
 
 func (v *Value) Exp() *Value {
 	out := NewValue(math.Exp(v.data), []*Value{v}, "exp")
-	out._backward = func() {
+	out.backward = func() {
 		v.grad += math.Exp(v.data) * out.grad
 	}
 	return out
@@ -104,7 +104,7 @@ func (v *Value) Div(other interface{}) *Value {
 	}
 
 	out := NewValue(v.data/otherVal.data, []*Value{v, otherVal}, "/")
-	v._backward = func() {
+	out.backward = func() {
 		v.grad += out.grad / otherVal.data
 		otherVal.grad -= v.data / (otherVal.data * otherVal.data) * out.grad
 	}
@@ -113,7 +113,7 @@ func (v *Value) Div(other interface{}) *Value {
 
 func (v *Value) Pow(other float64) *Value {
 	out := NewValue(math.Pow(v.data, other), []*Value{v}, "pow")
-	out._backward = func() {
+	out.backward = func() {
 		v.grad += other * math.Pow(v.data, other-1) * out.grad
 	}
 	return out
@@ -128,7 +128,7 @@ func (v *Value) Backward() {
 	buildTopo = func(v *Value) {
 		if !visited[v] {
 			visited[v] = true
-			for _, child := range v._prev {
+			for _, child := range v.prev {
 				buildTopo(child)
 			}
 			topo = append(topo, v)
@@ -139,6 +139,6 @@ func (v *Value) Backward() {
 	// Go one variable at a time and apply the chain rule to get its gradient
 	v.grad = 1
 	for i := len(topo) - 1; i >= 0; i-- {
-		topo[i]._backward()
+		topo[i].backward()
 	}
 }

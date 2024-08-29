@@ -7,7 +7,7 @@ import "math"
 func (v *Value) Tanh() *Value {
 	t := math.Tanh(v.data)
 	out := NewValue(t, []*Value{v}, "tanh")
-	out._backward = func() {
+	out.backward = func() {
 		v.grad += (1 - t*t) * out.grad
 	}
 	return out
@@ -16,7 +16,7 @@ func (v *Value) Tanh() *Value {
 // rectified linear unit. activation function f(x) = max(0, x), returns 0 for negative inputs and the input itself for positive values.
 func (v *Value) Relu() *Value {
 	out := NewValue(math.Max(0, v.data), []*Value{v}, "relu")
-	out._backward = func() {
+	out.backward = func() {
 		if v.data > 0 {
 			v.grad += out.grad
 		}
@@ -29,7 +29,7 @@ func (v *Value) Relu() *Value {
 func (v *Value) Sigmoid() *Value {
 	sig := 1 / (1 + math.Exp(-(v.data)))
 	out := NewValue(sig, []*Value{v}, "sigmoid")
-	out._backward = func() {
+	out.backward = func() {
 		v.grad += sig * (1 - sig) * out.grad
 	}
 	return out
