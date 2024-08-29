@@ -1,6 +1,9 @@
 package semigrad
 
-import "math/rand"
+import (
+	"fmt"
+	"math/rand"
+)
 
 type Neuron struct {
 	weights []*Value
@@ -85,8 +88,26 @@ func (m *MLP) MLPParams() []*Value {
 	return params
 }
 
-// TODO
-func (m *MLP) Loss() {}
+func (m *MLP) Forward(inputs []*Value) []*Value {
+	for _, layer := range m.layers {
+		outputs := make([]*Value, len(layer.neurons))
+		for i, neuron := range layer.neurons {
+			outputs[i] = neuron.Forward(inputs)
+		}
+		inputs = outputs
+	}
+	return inputs
+}
+
+func (m *MLP) Loss(inputs []*Value, targets []*Value) *Value {
+	predictions := m.Forward(inputs)
+	loss := NewValue(0, nil, "")
+	for i := range predictions {
+		diff := predictions[i].Sub(targets[i])
+		loss = loss.Add(diff.Pow(2))
+	}
+	return loss.Div(float64(len(targets)))
+}
 
 // gotta .zero_grad() before backward
 func (m *MLP) ZeroGrad() {
@@ -97,13 +118,33 @@ func (m *MLP) ZeroGrad() {
 
 // Forward pass -> Reset Grad -> Backward pass -> Update(Gradient Descent)
 // Minimizing the loss through gradient descent
-func (m *MLP) Optimize() {
+func (m *MLP) Optimize(learningRate float64) {
 	// Forward pass: input data is passed through the network. Each layer computes its output using its current weights and biases.
 	// Compute loss: The output of the network is compared to the target output using a loss function. A common loss function for regression problems is the mean squared error.
+	// Reset Grad --> Backward pass -> Update(Gradient Descent)
+	for _, p := range m.MLPParams() {
+		p.data -= learningRate * p.grad
+	}
+}
 
-	// Reset Grad
+func (m *MLP) Train(inputs [][]*Value, targets [][]*Value, epochs int, learningRate float64) {
+	for epoch := 0; epoch < epochs; epoch++ {
+		totalLoss := NewValue(0, nil, "")
+		for i := range inputs {
+			// Forward pass
+			loss := m.Loss(inputs[i], targets[i])
 
-	// Backward pass
+			// Backward pass
+			m.ZeroGrad()
+			loss.Backward()
 
-	// Update
+			// Update parameters
+			m.Optimize(learningRate)
+
+			totalLoss = totalLoss.Add(loss)
+		}
+		avgLoss := totalLoss.Div(float64(len(inputs)))
+
+		fmt.Printf("Epoch %d, Loss: %f\n", epoch, avgLoss.data)
+	}
 }
